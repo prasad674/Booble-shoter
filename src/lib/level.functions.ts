@@ -49,7 +49,10 @@ export const generateLevel = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<LevelBrief> => {
     const key = process.env["LOVABLE_API_KEY"];
     const t = tuning(data.level);
-    if (!key) return fallback(data.level);
+    if (!key) {
+      console.error("[level] LOVABLE_API_KEY missing");
+      return fallback(data.level);
+    }
 
     const gateway = createLovableAiGatewayProvider(key);
 
