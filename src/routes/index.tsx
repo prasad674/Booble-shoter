@@ -40,6 +40,10 @@ function Index() {
   const [level, setLevel] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [mods, setMods] = useState<Modifiers>(NO_MODIFIERS);
+  const [cleared, setCleared] = useState<number[]>([]);
+  const [unlocked, setUnlocked] = useState(1);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const nextLevelRef = useRef<number | null>(null);
 
   const toggleMod = useCallback((id: ModifierId) => {
     setMods((m) => ({ ...m, [id]: !m[id] }));
@@ -47,12 +51,14 @@ function Index() {
 
   const loadLevel = useCallback(
     async (next: number) => {
+      setCountdown(null);
+      nextLevelRef.current = null;
       setPhase("loading");
       setError(null);
+      setLevel(next);
       try {
         const data = await fetchLevel({ data: { level: next, modifiers: mods } });
         setBrief(data);
-        setLevel(next);
         setPhase("briefing");
       } catch {
         setError("The mission director is unreachable. Try again in a moment.");
@@ -62,11 +68,31 @@ function Index() {
     [fetchLevel, mods],
   );
 
+  const onFinish = useCallback(
+    (r: RoundResult) => {
+      setResult(r);
+      setPhase("result");
+      if (r.outcome === "escaped") {
+        setCleared((c) => (c.includes(level) ? c : [...c, level]));
+        setUnlocked((u) => Math.max(u, level + 1));
+        nextLevelRef.current = level + 1;
+        setCountdown(4);
+      }
+    },
+    [level],
+  );
 
-  const onFinish = useCallback((r: RoundResult) => {
-    setResult(r);
-    setPhase("result");
-  }, []);
+  // Auto-advance to the next level once the current one is over.
+  useEffect(() => {
+    if (phase !== "result" || countdown === null) return;
+    if (countdown <= 0) {
+      const next = nextLevelRef.current;
+      if (next !== null) void loadLevel(next);
+      return;
+    }
+    const t = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [phase, countdown, loadLevel]);
 
   return (
     <main
