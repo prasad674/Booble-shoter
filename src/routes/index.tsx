@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GameCanvas, type RoundResult } from "@/components/GameCanvas";
+import { LevelMap } from "@/components/LevelMap";
 import { generateLevel, type LevelBrief } from "@/lib/level.functions";
 import { MODIFIERS, NO_MODIFIERS, type ModifierId, type Modifiers } from "@/lib/modifiers";
 
