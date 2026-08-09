@@ -140,7 +140,9 @@ function Index() {
               {result.outcome === "escaped" ? "Extracted" : "You went down"}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">{result.reason}</p>
+            <ModifierToggles mods={mods} onToggle={toggleMod} />
             <div className="mt-5 flex flex-wrap gap-3">
+
               {result.outcome === "escaped" ? (
                 <ActionButton onClick={() => loadLevel(brief.level + 1)}>
                   Descend to level {brief.level + 1}
