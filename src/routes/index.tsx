@@ -169,6 +169,47 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ModifierToggles({
+  mods,
+  onToggle,
+}: {
+  mods: Modifiers;
+  onToggle: (id: ModifierId) => void;
+}) {
+  return (
+    <fieldset className="mt-5">
+      <legend className="font-mono text-xs uppercase tracking-[0.3em] text-accent">
+        Difficulty modifiers
+      </legend>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {MODIFIERS.map((m) => {
+          const on = mods[m.id];
+          return (
+            <button
+              key={m.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onToggle(m.id)}
+              className={`rounded-sm border px-3 py-2 text-left transition-colors ${
+                on
+                  ? "border-destructive bg-destructive/15 text-foreground"
+                  : "border-border bg-secondary text-muted-foreground hover:bg-secondary/70"
+              }`}
+            >
+              <span className="block font-mono text-xs uppercase tracking-widest">
+                {on ? "▣" : "▢"} {m.label}
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">{m.description}</span>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+
+
 function Spec({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-sm border border-border bg-secondary px-3 py-2">
