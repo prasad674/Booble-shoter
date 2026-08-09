@@ -94,9 +94,11 @@ function Index() {
             <p className="mt-2 text-sm text-muted-foreground">
               Difficulty scales every level: more hunters, faster fire, less ammo, less time.
             </p>
+            <ModifierToggles mods={mods} onToggle={toggleMod} />
             {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
             <ActionButton onClick={() => loadLevel(level)}>Deploy</ActionButton>
           </Panel>
+
         )}
 
         {phase === "loading" && (
