@@ -49,7 +49,7 @@ export const generateLevel = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<LevelBrief> => {
     const key = process.env["LOVABLE_API_KEY"];
     const t = tuning(data.level);
-    if (!key) return { ...fallback(data.level), codename: "NO KEY IN ENV" };
+    if (!key) return fallback(data.level);
 
     const gateway = createLovableAiGatewayProvider(key);
 
@@ -71,7 +71,7 @@ hunterName (max 3 words), taunt (max 12 words, spoken by the enemy), extractionL
       return { ...parsed, level: data.level, ...t };
     } catch (error) {
       console.error("generateLevel failed", error);
-      return { ...fallback(data.level), codename: String((error as Error)?.message ?? error).slice(0, 100) };
+      return fallback(data.level);
     }
   });
 
