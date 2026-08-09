@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 
 import { GameCanvas, type RoundResult } from "@/components/GameCanvas";
 import { generateLevel, type LevelBrief } from "@/lib/level.functions";
+import { MODIFIERS, NO_MODIFIERS, type ModifierId, type Modifiers } from "@/lib/modifiers";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
