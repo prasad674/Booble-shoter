@@ -164,7 +164,8 @@ export function GameCanvas({
 
       for (let i = bullets.length - 1; i >= 0; i -= 1) {
         const b = bullets[i];
-        b.x += b.vx;
+        if (!b) continue;
+
         b.y += b.vy;
         if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) {
           bullets.splice(i, 1);
