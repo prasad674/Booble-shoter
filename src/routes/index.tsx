@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GameCanvas, type RoundResult } from "@/components/GameCanvas";
+import { LevelMap } from "@/components/LevelMap";
 import { generateLevel, type LevelBrief } from "@/lib/level.functions";
 import { MODIFIERS, NO_MODIFIERS, type ModifierId, type Modifiers } from "@/lib/modifiers";
 
@@ -39,6 +40,10 @@ function Index() {
   const [level, setLevel] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [mods, setMods] = useState<Modifiers>(NO_MODIFIERS);
+  const [cleared, setCleared] = useState<number[]>([]);
+  const [unlocked, setUnlocked] = useState(1);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const nextLevelRef = useRef<number | null>(null);
 
   const toggleMod = useCallback((id: ModifierId) => {
     setMods((m) => ({ ...m, [id]: !m[id] }));
@@ -46,12 +51,14 @@ function Index() {
 
   const loadLevel = useCallback(
     async (next: number) => {
+      setCountdown(null);
+      nextLevelRef.current = null;
       setPhase("loading");
       setError(null);
+      setLevel(next);
       try {
         const data = await fetchLevel({ data: { level: next, modifiers: mods } });
         setBrief(data);
-        setLevel(next);
         setPhase("briefing");
       } catch {
         setError("The mission director is unreachable. Try again in a moment.");
@@ -61,11 +68,31 @@ function Index() {
     [fetchLevel, mods],
   );
 
+  const onFinish = useCallback(
+    (r: RoundResult) => {
+      setResult(r);
+      setPhase("result");
+      if (r.outcome === "escaped") {
+        setCleared((c) => (c.includes(level) ? c : [...c, level]));
+        setUnlocked((u) => Math.max(u, level + 1));
+        nextLevelRef.current = level + 1;
+        setCountdown(4);
+      }
+    },
+    [level],
+  );
 
-  const onFinish = useCallback((r: RoundResult) => {
-    setResult(r);
-    setPhase("result");
-  }, []);
+  // Auto-advance to the next level once the current one is over.
+  useEffect(() => {
+    if (phase !== "result" || countdown === null) return;
+    if (countdown <= 0) {
+      const next = nextLevelRef.current;
+      if (next !== null) void loadLevel(next);
+      return;
+    }
+    const t = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [phase, countdown, loadLevel]);
 
   return (
     <main
@@ -94,6 +121,7 @@ function Index() {
             <p className="mt-2 text-sm text-muted-foreground">
               Difficulty scales every level: more hunters, faster fire, less ammo, less time.
             </p>
+            <LevelMap cleared={cleared} unlocked={unlocked} current={level} onSelect={(n) => loadLevel(n)} />
             <ModifierToggles mods={mods} onToggle={toggleMod} />
             {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
             <ActionButton onClick={() => loadLevel(level)}>Deploy</ActionButton>
@@ -140,15 +168,31 @@ function Index() {
               {result.outcome === "escaped" ? "Extracted" : "You went down"}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">{result.reason}</p>
+            {result.outcome === "escaped" && countdown !== null && (
+              <p aria-live="polite" className="mt-3 font-mono text-sm uppercase tracking-widest text-accent">
+                Level {brief.level + 1} starts in {countdown}…
+              </p>
+            )}
+            <LevelMap
+              cleared={cleared}
+              unlocked={unlocked}
+              current={result.outcome === "escaped" ? brief.level + 1 : brief.level}
+              onSelect={(n) => loadLevel(n)}
+            />
             <ModifierToggles mods={mods} onToggle={toggleMod} />
             <div className="mt-5 flex flex-wrap gap-3">
 
               {result.outcome === "escaped" ? (
                 <ActionButton onClick={() => loadLevel(brief.level + 1)}>
-                  Descend to level {brief.level + 1}
+                  Descend now
                 </ActionButton>
               ) : (
                 <ActionButton onClick={() => loadLevel(brief.level)}>Retry level</ActionButton>
+              )}
+              {countdown !== null && (
+                <ActionButton variant="ghost" onClick={() => setCountdown(null)}>
+                  Stay on map
+                </ActionButton>
               )}
               <ActionButton variant="ghost" onClick={() => loadLevel(1)}>
                 Restart run
