@@ -167,15 +167,31 @@ function Index() {
               {result.outcome === "escaped" ? "Extracted" : "You went down"}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">{result.reason}</p>
+            {result.outcome === "escaped" && countdown !== null && (
+              <p aria-live="polite" className="mt-3 font-mono text-sm uppercase tracking-widest text-accent">
+                Level {brief.level + 1} starts in {countdown}…
+              </p>
+            )}
+            <LevelMap
+              cleared={cleared}
+              unlocked={unlocked}
+              current={result.outcome === "escaped" ? brief.level + 1 : brief.level}
+              onSelect={(n) => loadLevel(n)}
+            />
             <ModifierToggles mods={mods} onToggle={toggleMod} />
             <div className="mt-5 flex flex-wrap gap-3">
 
               {result.outcome === "escaped" ? (
                 <ActionButton onClick={() => loadLevel(brief.level + 1)}>
-                  Descend to level {brief.level + 1}
+                  Descend now
                 </ActionButton>
               ) : (
                 <ActionButton onClick={() => loadLevel(brief.level)}>Retry level</ActionButton>
+              )}
+              {countdown !== null && (
+                <ActionButton variant="ghost" onClick={() => setCountdown(null)}>
+                  Stay on map
+                </ActionButton>
               )}
               <ActionButton variant="ghost" onClick={() => loadLevel(1)}>
                 Restart run
