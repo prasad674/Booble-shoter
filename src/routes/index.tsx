@@ -38,13 +38,18 @@ function Index() {
   const [result, setResult] = useState<RoundResult | null>(null);
   const [level, setLevel] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [mods, setMods] = useState<Modifiers>(NO_MODIFIERS);
+
+  const toggleMod = useCallback((id: ModifierId) => {
+    setMods((m) => ({ ...m, [id]: !m[id] }));
+  }, []);
 
   const loadLevel = useCallback(
     async (next: number) => {
       setPhase("loading");
       setError(null);
       try {
-        const data = await fetchLevel({ data: { level: next } });
+        const data = await fetchLevel({ data: { level: next, modifiers: mods } });
         setBrief(data);
         setLevel(next);
         setPhase("briefing");
@@ -53,8 +58,9 @@ function Index() {
         setPhase("idle");
       }
     },
-    [fetchLevel],
+    [fetchLevel, mods],
   );
+
 
   const onFinish = useCallback((r: RoundResult) => {
     setResult(r);
