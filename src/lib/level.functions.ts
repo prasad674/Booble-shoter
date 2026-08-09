@@ -64,6 +64,10 @@ export const generateLevel = createServerFn({ method: "POST" })
         prompt: `You are the mission director of a tense top-down shooting-and-escape game.
 Write level ${data.level} of an escalating campaign. Level 1 is tense; by level 20 it is nightmarish and claustrophobic.
 This level has ${t.hunters} armed hunters, ${t.timeLimit} seconds of air, and ${t.ammo} rounds.
+Active difficulty modifiers: ${Object.entries(mods)
+          .filter(([, on]) => on)
+          .map(([id]) => id)
+          .join(", ") || "none"}. Reflect them in the tone if any are active.
 
 Reply with ONLY a json object, no markdown fences, with exactly these string keys:
 codename (max 4 words), briefing (max 2 sentences, second person, thriller tone, mentions the escalating threat),
@@ -76,7 +80,8 @@ hunterName (max 3 words), taunt (max 12 words, spoken by the enemy), extractionL
       return { ...parsed, level: data.level, ...t };
     } catch (error) {
       console.error("generateLevel failed", error);
-      return fallback(data.level);
+      return fallback(data.level, mods);
+
     }
   });
 
