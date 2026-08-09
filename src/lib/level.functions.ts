@@ -3,8 +3,19 @@ import { streamText } from "ai";
 import { z } from "zod";
 
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { NO_MODIFIERS, tuning, type Modifiers } from "./modifiers";
 
-const LevelInput = z.object({ level: z.number().int().min(1).max(99) });
+const LevelInput = z.object({
+  level: z.number().int().min(1).max(99),
+  modifiers: z
+    .object({
+      lockdown: z.boolean(),
+      marksman: z.boolean(),
+      swarm: z.boolean(),
+      scarce: z.boolean(),
+    })
+    .optional(),
+});
 
 const LevelSchema = z.object({
   codename: z.string(),
@@ -21,19 +32,11 @@ export type LevelBrief = z.infer<typeof LevelSchema> & {
   fireRate: number;
   timeLimit: number;
   ammo: number;
+  spread: number;
+  modifiers: Modifiers;
 };
 
-function tuning(level: number) {
-  return {
-    hunters: Math.min(3 + Math.floor(level * 1.6), 22),
-    hunterSpeed: Math.min(0.9 + level * 0.16, 3.4),
-    fireRate: Math.max(1500 - level * 95, 380),
-    timeLimit: Math.max(75 - level * 3, 30),
-    ammo: Math.max(60 - level * 2, 24),
-  };
-}
-
-const fallback = (level: number): LevelBrief => ({
+const fallback = (level: number, mods: Modifiers): LevelBrief => ({
   level,
   codename: `Blacksite ${level}`,
   briefing:
@@ -41,15 +44,17 @@ const fallback = (level: number): LevelBrief => ({
   hunterName: "Hunter Squad",
   taunt: "You will not make the door.",
   extractionLine: "Door breached. Keep moving.",
-  ...tuning(level),
+  ...tuning(level, mods),
 });
 
 export const generateLevel = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => LevelInput.parse(input))
   .handler(async ({ data }): Promise<LevelBrief> => {
     const key = process.env["LOVABLE_API_KEY"];
-    const t = tuning(data.level);
-    if (!key) return fallback(data.level);
+    const mods = data.modifiers ?? NO_MODIFIERS;
+    const t = tuning(data.level, mods);
+    if (!key) return fallback(data.level, mods);
+
 
     const gateway = createLovableAiGatewayProvider(key);
 
@@ -59,6 +64,10 @@ export const generateLevel = createServerFn({ method: "POST" })
         prompt: `You are the mission director of a tense top-down shooting-and-escape game.
 Write level ${data.level} of an escalating campaign. Level 1 is tense; by level 20 it is nightmarish and claustrophobic.
 This level has ${t.hunters} armed hunters, ${t.timeLimit} seconds of air, and ${t.ammo} rounds.
+Active difficulty modifiers: ${Object.entries(mods)
+          .filter(([, on]) => on)
+          .map(([id]) => id)
+          .join(", ") || "none"}. Reflect them in the tone if any are active.
 
 Reply with ONLY a json object, no markdown fences, with exactly these string keys:
 codename (max 4 words), briefing (max 2 sentences, second person, thriller tone, mentions the escalating threat),
@@ -71,7 +80,8 @@ hunterName (max 3 words), taunt (max 12 words, spoken by the enemy), extractionL
       return { ...parsed, level: data.level, ...t };
     } catch (error) {
       console.error("generateLevel failed", error);
-      return fallback(data.level);
+      return fallback(data.level, mods);
+
     }
   });
 

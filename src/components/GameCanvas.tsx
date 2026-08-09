@@ -152,14 +152,17 @@ export function GameCanvas({
         }
         if (now >= h.nextShot) {
           h.nextShot = now + brief.fireRate * (0.7 + Math.random() * 0.6);
+          const jitter = (Math.random() - 0.5) * 2 * (brief.spread ?? 0.2);
+          const base = Math.atan2(hy, hx) + jitter;
           bullets.push({
             x: h.x,
             y: h.y,
-            vx: (hx / hl) * (BULLET_SPEED * 0.55),
-            vy: (hy / hl) * (BULLET_SPEED * 0.55),
+            vx: Math.cos(base) * (BULLET_SPEED * 0.55),
+            vy: Math.sin(base) * (BULLET_SPEED * 0.55),
             hostile: true,
           });
         }
+
       }
 
       for (let i = bullets.length - 1; i >= 0; i -= 1) {

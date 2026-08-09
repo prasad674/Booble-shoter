@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 
 import { GameCanvas, type RoundResult } from "@/components/GameCanvas";
 import { generateLevel, type LevelBrief } from "@/lib/level.functions";
+import { MODIFIERS, NO_MODIFIERS, type ModifierId, type Modifiers } from "@/lib/modifiers";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -36,13 +38,18 @@ function Index() {
   const [result, setResult] = useState<RoundResult | null>(null);
   const [level, setLevel] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [mods, setMods] = useState<Modifiers>(NO_MODIFIERS);
+
+  const toggleMod = useCallback((id: ModifierId) => {
+    setMods((m) => ({ ...m, [id]: !m[id] }));
+  }, []);
 
   const loadLevel = useCallback(
     async (next: number) => {
       setPhase("loading");
       setError(null);
       try {
-        const data = await fetchLevel({ data: { level: next } });
+        const data = await fetchLevel({ data: { level: next, modifiers: mods } });
         setBrief(data);
         setLevel(next);
         setPhase("briefing");
@@ -51,8 +58,9 @@ function Index() {
         setPhase("idle");
       }
     },
-    [fetchLevel],
+    [fetchLevel, mods],
   );
+
 
   const onFinish = useCallback((r: RoundResult) => {
     setResult(r);
@@ -86,9 +94,11 @@ function Index() {
             <p className="mt-2 text-sm text-muted-foreground">
               Difficulty scales every level: more hunters, faster fire, less ammo, less time.
             </p>
+            <ModifierToggles mods={mods} onToggle={toggleMod} />
             {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
             <ActionButton onClick={() => loadLevel(level)}>Deploy</ActionButton>
           </Panel>
+
         )}
 
         {phase === "loading" && (
@@ -130,7 +140,9 @@ function Index() {
               {result.outcome === "escaped" ? "Extracted" : "You went down"}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">{result.reason}</p>
+            <ModifierToggles mods={mods} onToggle={toggleMod} />
             <div className="mt-5 flex flex-wrap gap-3">
+
               {result.outcome === "escaped" ? (
                 <ActionButton onClick={() => loadLevel(brief.level + 1)}>
                   Descend to level {brief.level + 1}
@@ -156,6 +168,47 @@ function Panel({ children }: { children: React.ReactNode }) {
     </section>
   );
 }
+
+function ModifierToggles({
+  mods,
+  onToggle,
+}: {
+  mods: Modifiers;
+  onToggle: (id: ModifierId) => void;
+}) {
+  return (
+    <fieldset className="mt-5">
+      <legend className="font-mono text-xs uppercase tracking-[0.3em] text-accent">
+        Difficulty modifiers
+      </legend>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {MODIFIERS.map((m) => {
+          const on = mods[m.id];
+          return (
+            <button
+              key={m.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onToggle(m.id)}
+              className={`rounded-sm border px-3 py-2 text-left transition-colors ${
+                on
+                  ? "border-destructive bg-destructive/15 text-foreground"
+                  : "border-border bg-secondary text-muted-foreground hover:bg-secondary/70"
+              }`}
+            >
+              <span className="block font-mono text-xs uppercase tracking-widest">
+                {on ? "▣" : "▢"} {m.label}
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">{m.description}</span>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+
 
 function Spec({ label, value }: { label: string; value: string }) {
   return (
