@@ -49,32 +49,29 @@ export const generateLevel = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<LevelBrief> => {
     const key = process.env["LOVABLE_API_KEY"];
     const t = tuning(data.level);
-    if (!key) {
-      console.error("[level] LOVABLE_API_KEY missing");
-      return { ...fallback(data.level), codename: "NOKEY" };
-      return fallback(data.level);
-    }
+    if (!key) return fallback(data.level);
 
     const gateway = createLovableAiGatewayProvider(key);
 
     try {
       const result = streamText({
         model: gateway("google/gemini-2.5-flash"),
-        output: Output.object({ schema: LevelSchema }),
         prompt: `You are the mission director of a tense top-down shooting-and-escape game.
 Write level ${data.level} of an escalating campaign. Level 1 is tense; by level 20 it is nightmarish and claustrophobic.
 This level has ${t.hunters} armed hunters, ${t.timeLimit} seconds of air, and ${t.ammo} rounds.
 
-Rules: codename max 4 words. briefing max 2 sentences, second person, thriller tone, mention the escalating threat.
-hunterName max 3 words. taunt max 12 words, spoken by the enemy. extractionLine max 10 words, spoken on escape.
-No markdown, no quotes around fields.`,
+Reply with ONLY a json object, no markdown fences, with exactly these string keys:
+codename (max 4 words), briefing (max 2 sentences, second person, thriller tone, mentions the escalating threat),
+hunterName (max 3 words), taunt (max 12 words, spoken by the enemy), extractionLine (max 8 words, spoken on escape).`,
       });
-      const output = await result.output;
-      return { ...output, level: data.level, ...t };
+
+      const raw = await result.text;
+      const json = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+      const parsed = LevelSchema.parse(JSON.parse(json));
+      return { ...parsed, level: data.level, ...t };
     } catch (error) {
-      if (NoObjectGeneratedError.isInstance(error)) return fallback(data.level);
       console.error("generateLevel failed", error);
-      return { ...fallback(data.level), codename: String((error as Error)?.message ?? error).slice(0,120) };
       return fallback(data.level);
     }
   });
+
