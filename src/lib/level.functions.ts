@@ -51,6 +51,7 @@ export const generateLevel = createServerFn({ method: "POST" })
     const t = tuning(data.level);
     if (!key) {
       console.error("[level] LOVABLE_API_KEY missing");
+      return { ...fallback(data.level), codename: "NOKEY" };
       return fallback(data.level);
     }
 
@@ -73,6 +74,7 @@ No markdown, no quotes around fields.`,
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) return fallback(data.level);
       console.error("generateLevel failed", error);
+      return { ...fallback(data.level), codename: String((error as Error)?.message ?? error).slice(0,120) };
       return fallback(data.level);
     }
   });
